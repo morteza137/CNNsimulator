@@ -1,16 +1,22 @@
+
 #pragma once
 
 #include <systemc>
+#include "ArithmeticPolicy.h"
 
 template<
-    int WEIGHT_WIDTH = 8,
-    int IFMAP_WIDTH  = 8,
-    int PSUM_WIDTH   = 32
+    typename WEIGHT_T = sc_dt::sc_int<8>,
+    typename IFMAP_T  = sc_dt::sc_int<8>,
+    typename PSUM_T   = sc_dt::sc_int<32>
 >
 SC_MODULE(MAC) {
-    using WeightType = sc_dt::sc_int<WEIGHT_WIDTH>;
-    using IfmapType  = sc_dt::sc_int<IFMAP_WIDTH>;
-    using PsumType   = sc_dt::sc_int<PSUM_WIDTH>;
+    using WeightType = WEIGHT_T;
+    using IfmapType  = IFMAP_T;
+    using PsumType   = PSUM_T;
+
+    sc_core::sc_in<bool> clk{"clk"};
+    sc_core::sc_in<bool> reset{"reset"};
+    sc_core::sc_in<bool> enable{"enable"};
 
     sc_core::sc_in<WeightType> weight{"weight"};
     sc_core::sc_in<IfmapType>  ifmap{"ifmap"};
@@ -21,38 +27,37 @@ SC_MODULE(MAC) {
 
     SC_CTOR(MAC) {
         SC_METHOD(compute);
-        sensitive << weight << ifmap << psum << approximate;
+        sensitive << clk.pos();
+        dont_initialize();
     }
 
 private:
-    // Exact multiplication and accumulation
-    PsumType exact(
-        WeightType w,
-        IfmapType a,
-        PsumType p
-    ) {
-        return PsumType(w * a) + p;
-    }
-
-    // Approximate multiplication: placeholder for future implementation
-    PsumType approximate_mac(
-        WeightType w,
-        IfmapType a,
-        PsumType p
-    ) {
-        const PsumType product = w * a;
-        return product + p;
-    }
-
     void compute() {
+        if (reset.read()) {
+            result.write(PsumType(0));
+            return;
+        }
+
+        if (!enable.read()) {
+            return; // Hold the previous output.
+        }
+
         const auto w = weight.read();
         const auto a = ifmap.read();
         const auto p = psum.read();
 
         if (approximate.read()) {
-            result.write(approximate_mac(w, a, p));
+            result.write(
+                ApproximateArithmetic::compute<WeightType, IfmapType, PsumType>(
+                    w, a, p
+                )
+            );
         } else {
-            result.write(exact(w, a, p));
+            result.write(
+                ExactArithmetic::compute<WeightType, IfmapType, PsumType>(
+                    w, a, p
+                )
+            );
         }
     }
 };
