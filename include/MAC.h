@@ -7,25 +7,33 @@
 template<
     typename WEIGHT_T = sc_dt::sc_int<8>,
     typename IFMAP_T  = sc_dt::sc_int<8>,
-    typename PSUM_T   = sc_dt::sc_int<32>
+    typename PSUM_T   = sc_dt::sc_int<32>,
+    typename ARITHMETIC_POLICY = ExactArithmetic
 >
 SC_MODULE(MAC) {
     using WeightType = WEIGHT_T;
     using IfmapType  = IFMAP_T;
     using PsumType   = PSUM_T;
+    using PolicyType = ARITHMETIC_POLICY;
 
+    // Control ports
     sc_core::sc_in<bool> clk{"clk"};
     sc_core::sc_in<bool> reset{"reset"};
     sc_core::sc_in<bool> enable{"enable"};
 
+    // Data input ports
     sc_core::sc_in<WeightType> weight{"weight"};
     sc_core::sc_in<IfmapType>  ifmap{"ifmap"};
     sc_core::sc_in<PsumType>   psum{"psum"};
 
-    sc_core::sc_in<bool> approximate{"approximate"};
+    // Data output port
     sc_core::sc_out<PsumType> result{"result"};
 
-    SC_CTOR(MAC) {
+    SC_HAS_PROCESS(MAC);
+
+    explicit MAC(sc_core::sc_module_name name)
+        : sc_core::sc_module(name) {
+
         SC_METHOD(compute);
         sensitive << clk.pos();
         dont_initialize();
@@ -39,25 +47,19 @@ private:
         }
 
         if (!enable.read()) {
-            return; // Hold the previous output.
+            return; // Hold previous output.
         }
 
-        const auto w = weight.read();
-        const auto a = ifmap.read();
-        const auto p = psum.read();
+        const WeightType w = weight.read();
+        const IfmapType  a = ifmap.read();
+        const PsumType   p = psum.read();
 
-        if (approximate.read()) {
-            result.write(
-                ApproximateArithmetic::compute<WeightType, IfmapType, PsumType>(
-                    w, a, p
-                )
-            );
-        } else {
-            result.write(
-                ExactArithmetic::compute<WeightType, IfmapType, PsumType>(
-                    w, a, p
-                )
-            );
-        }
+        result.write(
+            PolicyType::template compute<
+                WeightType,
+                IfmapType,
+                PsumType
+            >(w, a, p)
+        );
     }
 };
