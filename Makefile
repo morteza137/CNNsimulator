@@ -13,6 +13,11 @@ test_%:
 	$(CXX) $(CXXFLAGS) $(INCLUDES) tests/$@.cpp -o $(BUILD)/$@ $(LIBS)
 	./$(BUILD)/$@
 
+test_pe:
+	@mkdir -p $(BUILD)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) tests/test_pe.cpp src/PE.cpp -o $(BUILD)/test_pe $(LIBS)
+	./$(BUILD)/test_pe
+
 clean:
 	rm -rf $(BUILD)
 
