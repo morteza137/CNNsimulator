@@ -18,6 +18,15 @@ test_pe:
 	$(CXX) $(CXXFLAGS) $(INCLUDES) tests/test_pe.cpp src/PE.cpp -o $(BUILD)/test_pe $(LIBS)
 	./$(BUILD)/test_pe
 
+test_pearray:
+	@mkdir -p $(BUILD)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) \
+		tests/test_pearray.cpp \
+		src/PE.cpp \
+		src/PEArray.cpp \
+		-o $(BUILD)/test_pearray $(LIBS)
+	./$(BUILD)/test_pearray
+
 clean:
 	rm -rf $(BUILD)
 
